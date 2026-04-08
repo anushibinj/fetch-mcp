@@ -11,13 +11,13 @@ An MCP server that makes HTTP requests. Describe what you want in natural langua
 No installation needed — run directly via `npx`:
 
 ```bash
-npx @anushibinj/fetch-mcp
+npx -y @anushibinj/fetch-mcp
 ```
 
 For HTTP / Streamable HTTP transport:
 
 ```bash
-npx @anushibinj/fetch-mcp --transport=http
+npx -y @anushibinj/fetch-mcp --transport=http
 # optionally: --port=3000 (default)
 ```
 
