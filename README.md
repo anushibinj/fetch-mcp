@@ -6,22 +6,43 @@ An MCP server that makes HTTP requests. Describe what you want in natural langua
 
 - Node.js 18+
 
-## Installation
+## Running from npm
+
+No installation needed — run directly via `npx`:
+
+```bash
+npx @anushibinj/fetch-mcp
+```
+
+For HTTP / Streamable HTTP transport:
+
+```bash
+npx @anushibinj/fetch-mcp --transport=http
+# optionally: --port=3000 (default)
+```
+
+The server listens at `http://localhost:3000/mcp`.
+
+---
+
+## Local Development
+
+### Installation
 
 ```bash
 npm install
 npm run build
 ```
 
-## Usage
+### Usage
 
-### stdio (local, for editors)
+#### stdio
 
 ```bash
 node dist/index.js
 ```
 
-### HTTP / Streamable HTTP (remote)
+#### HTTP / Streamable HTTP (remote)
 
 ```bash
 node dist/index.js --transport=http
@@ -38,6 +59,20 @@ The server listens at `http://localhost:3000/mcp`.
 
 **Per-workspace** — create `.vscode/mcp.json` in your project:
 
+Using npm (recommended):
+```json
+{
+  "servers": {
+    "fetch-mcp": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@anushibinj/fetch-mcp"]
+    }
+  }
+}
+```
+
+Using a local build:
 ```json
 {
   "servers": {
@@ -52,6 +87,20 @@ The server listens at `http://localhost:3000/mcp`.
 
 **Global** — add to User Settings (`Ctrl+Shift+P` → "Open User Settings JSON"):
 
+Using npm (recommended):
+```json
+"mcp": {
+  "servers": {
+    "fetch-mcp": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@anushibinj/fetch-mcp"]
+    }
+  }
+}
+```
+
+Using a local build:
 ```json
 "mcp": {
   "servers": {
@@ -68,6 +117,19 @@ The server listens at `http://localhost:3000/mcp`.
 
 Edit `%APPDATA%\Claude\claude_desktop_config.json` (macOS: `~/Library/Application Support/Claude/`):
 
+Using npm (recommended):
+```json
+{
+  "mcpServers": {
+    "fetch-mcp": {
+      "command": "npx",
+      "args": ["-y", "@anushibinj/fetch-mcp"]
+    }
+  }
+}
+```
+
+Using a local build:
 ```json
 {
   "mcpServers": {
