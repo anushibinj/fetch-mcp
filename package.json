@@ -1,5 +1,5 @@
 {
-  "name": "fetch-mcp",
+  "name": "@anushibinj/fetch-mcp",
   "version": "1.0.0",
   "description": "MCP server for making HTTP requests via the built-in fetch API",
   "type": "module",
