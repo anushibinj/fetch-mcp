@@ -147,7 +147,7 @@ Restart Claude Desktop after saving.
 
 ## The `http_request` tool
 
-The server exposes a single tool: **`http_request`**.
+The server exposes two tools: **`http_request`** and **`fetch_meta`** (see [below](#the-fetch_meta-tool)).
 
 | Parameter | Type | Required | Description |
 |---|---|---|---|
@@ -207,3 +207,19 @@ npm run build        # compile TypeScript → dist/
 npm start            # run compiled, stdio
 npm run start:http   # run compiled, HTTP transport
 ```
+
+---
+
+## The `fetch_meta` tool
+
+Fetches a page the way a phone browser would and returns all of its metadata.
+
+- Sends an **iPhone Safari** user agent by default so most sites don't block the request
+- Follows HTTP redirects **and** `<meta http-equiv="refresh">` redirects (up to 3 hops); the full chain is returned
+- Returns the title, description, canonical URL, **every** `<meta>` tag (grouped into `openGraph` for `og:*`/`article:*`/`fb:*`, `twitter` for `twitter:*`, and `meta` for the rest), `<link>` tags (icons, canonical, alternate, manifest…) and JSON-LD blocks. Repeated tags (e.g. several `og:image`) become arrays.
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `url` | string | ✅ | Page URL |
+| `userAgent` | string | | Override the default iPhone Safari user agent |
+| `timeout` | number | | Timeout per hop in milliseconds (default: `20000`) |
