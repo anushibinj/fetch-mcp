@@ -3,6 +3,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { registerTools } from "./tools/http-request.js";
+import { registerFetchMetaTool } from "./tools/fetch-meta.js";
 
 // Parse CLI arguments
 const args = process.argv.slice(2);
@@ -22,7 +23,7 @@ function createServer(): McpServer {
     { name: "fetch-mcp", version: "1.0.0" },
     {
       instructions:
-        "Use the http_request tool to make HTTP requests. Provide the URL and optionally method, headers, body, auth, and other options. The tool supports GET, POST, PUT, PATCH, DELETE, HEAD, and OPTIONS methods.",
+        "Use the fetch_meta tool to get a page's title, description, Open Graph and Twitter tags (and all other meta tags) for a URL. Use the http_request tool to make HTTP requests. Provide the URL and optionally method, headers, body, auth, and other options. The tool supports GET, POST, PUT, PATCH, DELETE, HEAD, and OPTIONS methods.",
     },
   );
 }
@@ -30,6 +31,7 @@ function createServer(): McpServer {
 async function startStdio(): Promise<void> {
   const server = createServer();
   registerTools(server);
+  registerFetchMetaTool(server);
 
   const transport = new StdioServerTransport();
   await server.connect(transport);
@@ -68,6 +70,7 @@ async function startHttp(): Promise<void> {
     if (req.method === "POST") {
       const server = createServer();
       registerTools(server);
+      registerFetchMetaTool(server);
 
       const transport = new StreamableHTTPServerTransport({
         sessionIdGenerator: () => randomUUID(),
