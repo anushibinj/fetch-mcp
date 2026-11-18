@@ -62,12 +62,46 @@ async function startHttp(): Promise<void> {
   // Queue: never rejects, but processes at most QUEUE_CONCURRENCY requests at once.
   const queue = new RequestQueue(envInt("QUEUE_CONCURRENCY", 100, 1));
 
+  // Log every incoming request (including its body) to stdout, redacting secrets
+  const SENSITIVE_KEY = /^(password|token|authorization|proxy-authorization|cookie|set-cookie|x-api-key|api[-_]?key|secret)$/i;
+  const redact = (value: unknown): unknown => {
+    if (Array.isArray(value)) return value.map(redact);
+    if (value && typeof value === "object") {
+      return Object.fromEntries(
+        Object.entries(value as Record<string, unknown>).map(([k, v]) => [
+          k,
+          SENSITIVE_KEY.test(k) ? "[REDACTED]" : redact(v),
+        ]),
+      );
+    }
+    return value;
+  };
+
+  app.use((req, res, next) => {
+    const start = Date.now();
+    const body = req.body && typeof req.body === "object" && Object.keys(req.body).length > 0 ? redact(req.body) : undefined;
+    const rpc = (body as { method?: string; params?: { name?: string; arguments?: { url?: unknown } } } | undefined);
+    const tool = rpc?.params?.name;
+    const targetUrl = rpc?.params?.arguments?.url;
+    res.on("finish", () => {
+      console.log(
+        `[${new Date().toISOString()}] ${req.method} ${req.originalUrl}` +
+          (rpc?.method ? ` rpc=${rpc.method}` : "") +
+          (tool ? ` tool=${tool}` : "") +
+          (typeof targetUrl === "string" ? ` url=${targetUrl}` : "") +
+          ` -> ${res.statusCode} (${Date.now() - start}ms)` +
+          (body ? `\n  body: ${JSON.stringify(body)}` : ""),
+      );
+    });
+    next();
+  });
+
   // Track per-session transports
   const transports = new Map<string, InstanceType<typeof StreamableHTTPServerTransport>>();
 
   // Handle all MCP traffic on /mcp
   app.all("/mcp", (req, res) => {
-    // Only POSTs do real work; they go through the bounded queue.
+    // Only POSTs do real work; they go through the queue.
     // GET (SSE stream) / DELETE are long-lived or cheap and bypass it.
     if (req.method !== "POST") {
       handleMcp(req, res).catch(console.error);
