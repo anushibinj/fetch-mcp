@@ -71,6 +71,18 @@ docker compose up --build
 
 The server runs with the HTTP transport at `http://localhost:3000/mcp`. Set `PORT` to change the host port (e.g. `PORT=8080 docker compose up`).
 
+### Request queue / overload protection (HTTP transport)
+
+Incoming MCP `POST /mcp` requests go through a bounded in-memory queue. Requests are removed from the queue as soon as they start processing, so it never grows without bound. When the queue is full the server replies `503` with `Retry-After: 1`; requests waiting too long get `504`.
+
+| Env var | Default | Meaning |
+| --- | --- | --- |
+| `QUEUE_MAX_SIZE` | `100` | Max requests waiting in the queue |
+| `QUEUE_CONCURRENCY` | `10` | Max requests processed concurrently |
+| `QUEUE_WAIT_TIMEOUT_MS` | `30000` | Max time a request may wait (`0` = no limit) |
+
+Works with `docker compose` too, e.g. `QUEUE_MAX_SIZE=200 QUEUE_CONCURRENCY=20 docker compose up`.
+
 ## Adding to an MCP client
 
 ### VS Code (GitHub Copilot)
