@@ -5,10 +5,6 @@ services:
     ports:
       - "${PORT:-3000}:3000"
     environment:
-      # Max requests waiting in the queue (excess gets HTTP 503 + Retry-After)
-      QUEUE_MAX_SIZE: "${QUEUE_MAX_SIZE:-100}"
-      # Max requests processed at the same time
-      QUEUE_CONCURRENCY: "${QUEUE_CONCURRENCY:-10}"
-      # Max ms a request may wait in the queue before HTTP 504 (0 = no limit)
-      QUEUE_WAIT_TIMEOUT_MS: "${QUEUE_WAIT_TIMEOUT_MS:-30000}"
+      # Max requests processed at the same time; extra requests wait in the queue
+      QUEUE_CONCURRENCY: "${QUEUE_CONCURRENCY:-100}"
     restart: unless-stopped
