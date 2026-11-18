@@ -59,6 +59,14 @@ The server listens at `http://localhost:3000/mcp`.
 
 ---
 
+## Running with Docker Compose
+
+```bash
+docker compose up --build
+```
+
+The server runs with the HTTP transport at `http://localhost:3000/mcp`. Set `PORT` to change the host port (e.g. `PORT=8080 docker compose up`).
+
 ## Adding to an MCP client
 
 ### VS Code (GitHub Copilot)
