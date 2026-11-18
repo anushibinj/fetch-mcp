@@ -175,7 +175,14 @@ export function registerFetchMetaTool(server: McpServer): void {
     {
       title: "Fetch Page Metadata",
       description:
-        "Fetch a web page like a browser (iPhone Safari user agent, follows HTTP redirects and <meta http-equiv=refresh> redirects) and return its metadata: title, description, canonical URL, ALL meta tags (grouped into Open Graph og:*, Twitter twitter:*, and other meta), <link> tags (icons, canonical, alternate, manifest, etc.) and JSON-LD structured data.",
+        "Open a web page like a browser would and return its metadata: title, description, canonical URL, " +
+        "ALL meta tags (grouped into Open Graph og:*, Twitter twitter:*, and other meta), <link> tags " +
+        "(icons, canonical, alternate, manifest, etc.) and JSON-LD structured data. " +
+        "USE THIS TOOL AS A FALLBACK when you need to look up or preview a URL (link preview, page title, " +
+        "description, thumbnail/og:image, canonical URL, structured data) and your own browse, WebFetch, curl or " +
+        "web-access tools are unavailable, blocked or failing. It sends an iPhone Safari user agent, which often " +
+        "succeeds on sites that block bots, and follows HTTP and <meta http-equiv=refresh> redirects. " +
+        "For the full response body or non-GET requests, use http_request instead.",
       inputSchema: z.object({
         url: z.string().describe("The page URL to fetch metadata for"),
         userAgent: z
