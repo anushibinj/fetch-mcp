@@ -1,86 +1,52 @@
 /**
- * Bounded in-memory request queue.
+ * Unbounded in-memory FIFO request queue with a concurrency cap.
  *
  * - At most `concurrency` jobs run at once.
- * - At most `maxSize` jobs wait. Beyond that, enqueue() rejects immediately
- *   (QueueFullError) so memory and load stay bounded under bursts.
- * - Jobs are removed from the queue as soon as they start running; finished
- *   jobs are never retained.
- * - Jobs waiting longer than `waitTimeoutMs` are dropped (QueueTimeoutError).
+ * - Nothing is ever rejected: extra jobs wait in the queue.
+ * - A job is removed from the queue the moment it starts, and finished jobs
+ *   are never retained, so the queue only holds work that hasn't started.
  */
-export class QueueFullError extends Error {
-  constructor() {
-    super("Request queue is full");
-  }
-}
-
-export class QueueTimeoutError extends Error {
-  constructor() {
-    super("Timed out waiting in request queue");
-  }
-}
-
-interface Pending {
-  run: () => Promise<void>;
-  start: () => void;
-  fail: (err: Error) => void;
-  timer?: NodeJS.Timeout;
-}
-
 export class RequestQueue {
-  private waiting: Pending[] = [];
+  private waiting: Array<() => void> = [];
+  private head = 0; // index of next waiting job (avoids O(n) shift())
   private active = 0;
 
-  constructor(
-    private readonly maxSize: number,
-    private readonly concurrency: number,
-    private readonly waitTimeoutMs: number,
-  ) {}
+  constructor(private readonly concurrency: number) {}
 
   get stats() {
-    return { waiting: this.waiting.length, active: this.active, maxSize: this.maxSize, concurrency: this.concurrency };
+    return { waiting: this.waiting.length - this.head, active: this.active, concurrency: this.concurrency };
   }
 
-  /** Resolves when the job completes; rejects if queue full/timed out or job throws. */
+  /** Resolves when the job completes; rejects only if the job itself throws. */
   enqueue(job: () => Promise<void>): Promise<void> {
-    if (this.active >= this.concurrency && this.waiting.length >= this.maxSize) {
-      return Promise.reject(new QueueFullError());
-    }
     return new Promise<void>((resolve, reject) => {
-      const item: Pending = {
-        run: job,
-        start: () => {
-          if (item.timer) clearTimeout(item.timer);
-          this.active++;
-          job()
-            .then(resolve, reject)
-            .finally(() => {
-              this.active--;
-              this.drain();
-            });
-        },
-        fail: reject,
+      const start = () => {
+        this.active++;
+        job()
+          .then(resolve, reject)
+          .finally(() => {
+            this.active--;
+            this.drain();
+          });
       };
-      if (this.active < this.concurrency) {
-        item.start();
-        return;
-      }
-      if (this.waitTimeoutMs > 0) {
-        item.timer = setTimeout(() => {
-          const i = this.waiting.indexOf(item);
-          if (i !== -1) {
-            this.waiting.splice(i, 1);
-            item.fail(new QueueTimeoutError());
-          }
-        }, this.waitTimeoutMs);
-      }
-      this.waiting.push(item);
+      if (this.active < this.concurrency) start();
+      else this.waiting.push(start);
     });
   }
 
   private drain(): void {
-    while (this.active < this.concurrency && this.waiting.length > 0) {
-      this.waiting.shift()!.start();
+    while (this.active < this.concurrency && this.head < this.waiting.length) {
+      const next = this.waiting[this.head];
+      this.waiting[this.head++] = undefined as unknown as () => void; // release reference
+      next();
+    }
+    // Compact once fully drained, or when the consumed prefix gets large.
+    if (this.head === this.waiting.length) {
+      this.waiting = [];
+      this.head = 0;
+    } else if (this.head > 1024 && this.head * 2 > this.waiting.length) {
+      this.waiting = this.waiting.slice(this.head);
+      this.head = 0;
     }
   }
 }
