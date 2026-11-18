@@ -21,7 +21,7 @@ Build a TypeScript MCP server (`fetch-mcp`) that exposes an `http_request` tool.
 ### Phase 1: Project Scaffold
 - [x] Initialize `package.json` with `@modelcontextprotocol/sdk`, `typescript`, `tsx`, `@types/node`
 - [x] Create `tsconfig.json` targeting ES2022/Node18+
-- [x] Add npm scripts: `build`, `start` (stdio), `start:http` (SSE/HTTP)
+- [x] Add package scripts: `build`, `start` (stdio), `start:http` (SSE/HTTP)
 
 ### Phase 2: Server Core
 - [x] Create `src/index.ts` — MCP server instantiation, tool registration, transport wiring
@@ -54,18 +54,22 @@ Build a TypeScript MCP server (`fetch-mcp`) that exposes an `http_request` tool.
 - `tsconfig.json` — TypeScript config
 - `src/index.ts` — server entry point, transport setup, tool registration
 - `src/tools/http-request.ts` — http_request tool definition (inputSchema) and handler logic
+- `src/tools/fetch-meta.ts` — fetch_meta tool: iPhone Safari UA, redirect/meta-refresh following, greedy meta/OG/Twitter/link/JSON-LD extraction
 
 ## Verification
-1. `npm run build` compiles without errors
+1. `pnpm build` compiles without errors
 2. Manual test stdio: pipe a JSON-RPC `tools/list` request via stdin, verify `http_request` tool appears
 3. Manual test tool call: send `tools/call` with `{ url: "https://httpbin.org/get" }`, verify response
 4. Test HTTP transport: start with `--transport=http`, hit endpoint from a client
 5. Test POST with body: call tool with method=POST, body, headers
 6. Test error handling: invalid URL, timeout, network error — graceful error messages
+7. Test `fetch_meta`: call with a URL that redirects; verify `finalUrl`, `redirectChain`, `openGraph`, `twitter`, `meta`
 
 ## Decisions
 - **Built-in fetch, not shell curl** — no external dependency, cross-platform
 - **No URL restrictions** — user is responsible
 - **Dual transport** — stdio for VS Code/editor integration, HTTP for remote access
-- **Single tool (`http_request`) with rich params** — LLM translates NL to structured params
+- **`http_request` with rich params** — LLM translates NL to structured params
+- **`fetch_meta` as a separate tool** — metadata extraction uses a mobile Safari UA (so sites don't block it) and a dependency-free regex parser limited to `<head>`; kept apart from `http_request` so that tool's raw behavior is unchanged
+- **pnpm** — package manager for development and CI (`pnpm-lock.yaml`); `npx` remains the way for end users to run the published package
 - **Node 18+ required** — for native fetch support
