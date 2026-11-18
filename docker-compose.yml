@@ -1,0 +1,7 @@
+services:
+  fetch-mcp:
+    build: .
+    image: fetch-mcp:latest
+    ports:
+      - "${PORT:-3000}:3000"
+    restart: unless-stopped
