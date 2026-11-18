@@ -4,7 +4,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { registerTools } from "./tools/http-request.js";
 import { registerFetchMetaTool } from "./tools/fetch-meta.js";
-import { RequestQueue, QueueFullError, envInt } from "./request-queue.js";
+import { RequestQueue, envInt } from "./request-queue.js";
 
 // Parse CLI arguments
 const args = process.argv.slice(2);
@@ -59,22 +59,8 @@ async function startHttp(): Promise<void> {
   const app = express();
   app.use(express.json());
 
-  // Bounded queue: protects the server from bursts (e.g. 1000 concurrent requests).
-  const queue = new RequestQueue(
-    envInt("QUEUE_MAX_SIZE", 100, 1),
-    envInt("QUEUE_CONCURRENCY", 10, 1),
-    envInt("QUEUE_WAIT_TIMEOUT_MS", 30000, 0),
-  );
-  const rejectOverloaded = (res: import("express").Response, err: unknown) => {
-    if (res.headersSent) return;
-    const full = err instanceof QueueFullError;
-    res.setHeader("Retry-After", "1");
-    res.status(full ? 503 : 504).json({
-      jsonrpc: "2.0",
-      error: { code: -32000, message: full ? "Server busy: request queue is full" : "Timed out waiting in request queue" },
-      id: null,
-    });
-  };
+  // Queue: never rejects, but processes at most QUEUE_CONCURRENCY requests at once.
+  const queue = new RequestQueue(envInt("QUEUE_CONCURRENCY", 100, 1));
 
   // Track per-session transports
   const transports = new Map<string, InstanceType<typeof StreamableHTTPServerTransport>>();
@@ -101,7 +87,10 @@ async function startHttp(): Promise<void> {
             });
           }),
       )
-      .catch((err) => rejectOverloaded(res, err));
+      .catch((err) => {
+        console.error(err);
+        if (!res.headersSent) res.status(500).json({ error: "Internal error" });
+      });
   });
 
   async function handleMcp(req: import("express").Request, res: import("express").Response) {
