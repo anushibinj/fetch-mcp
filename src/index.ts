@@ -58,6 +58,20 @@ async function startHttp(): Promise<void> {
   const app = express();
   app.use(express.json());
 
+  // Log every incoming request to stdout
+  app.use((req, res, next) => {
+    const start = Date.now();
+    const rpc = req.body && typeof req.body === "object" ? (req.body as { method?: string }).method : undefined;
+    res.on("finish", () => {
+      console.log(
+        `[${new Date().toISOString()}] ${req.method} ${req.originalUrl}` +
+          (rpc ? ` rpc=${rpc}` : "") +
+          ` -> ${res.statusCode} (${Date.now() - start}ms)`,
+      );
+    });
+    next();
+  });
+
   // Track per-session transports
   const transports = new Map<string, InstanceType<typeof StreamableHTTPServerTransport>>();
 
