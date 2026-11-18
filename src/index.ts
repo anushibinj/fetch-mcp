@@ -58,15 +58,35 @@ async function startHttp(): Promise<void> {
   const app = express();
   app.use(express.json());
 
-  // Log every incoming request to stdout
+  // Log every incoming request (including its body) to stdout, redacting secrets
+  const SENSITIVE_KEY = /^(password|token|authorization|proxy-authorization|cookie|set-cookie|x-api-key|api[-_]?key|secret)$/i;
+  const redact = (value: unknown): unknown => {
+    if (Array.isArray(value)) return value.map(redact);
+    if (value && typeof value === "object") {
+      return Object.fromEntries(
+        Object.entries(value as Record<string, unknown>).map(([k, v]) => [
+          k,
+          SENSITIVE_KEY.test(k) ? "[REDACTED]" : redact(v),
+        ]),
+      );
+    }
+    return value;
+  };
+
   app.use((req, res, next) => {
     const start = Date.now();
-    const rpc = req.body && typeof req.body === "object" ? (req.body as { method?: string }).method : undefined;
+    const body = req.body && typeof req.body === "object" && Object.keys(req.body).length > 0 ? redact(req.body) : undefined;
+    const rpc = (body as { method?: string; params?: { name?: string; arguments?: { url?: unknown } } } | undefined);
+    const tool = rpc?.params?.name;
+    const targetUrl = rpc?.params?.arguments?.url;
     res.on("finish", () => {
       console.log(
         `[${new Date().toISOString()}] ${req.method} ${req.originalUrl}` +
-          (rpc ? ` rpc=${rpc}` : "") +
-          ` -> ${res.statusCode} (${Date.now() - start}ms)`,
+          (rpc?.method ? ` rpc=${rpc.method}` : "") +
+          (tool ? ` tool=${tool}` : "") +
+          (typeof targetUrl === "string" ? ` url=${targetUrl}` : "") +
+          ` -> ${res.statusCode} (${Date.now() - start}ms)` +
+          (body ? `\n  body: ${JSON.stringify(body)}` : ""),
       );
     });
     next();
