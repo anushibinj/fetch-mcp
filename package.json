@@ -3,6 +3,7 @@
   "version": "1.0.1",
   "description": "MCP server for making HTTP requests via the built-in fetch API",
   "type": "module",
+  "packageManager": "pnpm@10.28.0",
   "main": "dist/index.js",
   "bin": {
     "fetch-mcp": "dist/index.js"
@@ -12,8 +13,8 @@
   ],
   "scripts": {
     "build": "tsc",
-    "prepublishOnly": "npm run build",
-    "test": "npm run build",
+    "prepublishOnly": "pnpm run build",
+    "test": "pnpm run build",
     "start": "node dist/index.js",
     "start:http": "node dist/index.js --transport=http",
     "dev": "tsx src/index.ts",
