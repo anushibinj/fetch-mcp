@@ -4,6 +4,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { registerTools } from "./tools/http-request.js";
 import { registerFetchMetaTool } from "./tools/fetch-meta.js";
+import { RequestQueue, QueueFullError, envInt } from "./request-queue.js";
 
 // Parse CLI arguments
 const args = process.argv.slice(2);
@@ -58,11 +59,52 @@ async function startHttp(): Promise<void> {
   const app = express();
   app.use(express.json());
 
+  // Bounded queue: protects the server from bursts (e.g. 1000 concurrent requests).
+  const queue = new RequestQueue(
+    envInt("QUEUE_MAX_SIZE", 100, 1),
+    envInt("QUEUE_CONCURRENCY", 10, 1),
+    envInt("QUEUE_WAIT_TIMEOUT_MS", 30000, 0),
+  );
+  const rejectOverloaded = (res: import("express").Response, err: unknown) => {
+    if (res.headersSent) return;
+    const full = err instanceof QueueFullError;
+    res.setHeader("Retry-After", "1");
+    res.status(full ? 503 : 504).json({
+      jsonrpc: "2.0",
+      error: { code: -32000, message: full ? "Server busy: request queue is full" : "Timed out waiting in request queue" },
+      id: null,
+    });
+  };
+
   // Track per-session transports
   const transports = new Map<string, InstanceType<typeof StreamableHTTPServerTransport>>();
 
   // Handle all MCP traffic on /mcp
-  app.all("/mcp", async (req, res) => {
+  app.all("/mcp", (req, res) => {
+    // Only POSTs do real work; they go through the bounded queue.
+    // GET (SSE stream) / DELETE are long-lived or cheap and bypass it.
+    if (req.method !== "POST") {
+      handleMcp(req, res).catch(console.error);
+      return;
+    }
+    queue
+      .enqueue(
+        () =>
+          new Promise<void>((resolve) => {
+            // Client gave up while queued: skip the work, free the slot.
+            if (res.destroyed || req.destroyed) return resolve();
+            res.once("close", resolve);
+            handleMcp(req, res).catch((e) => {
+              console.error(e);
+              if (!res.headersSent) res.status(500).json({ error: "Internal error" });
+              resolve();
+            });
+          }),
+      )
+      .catch((err) => rejectOverloaded(res, err));
+  });
+
+  async function handleMcp(req: import("express").Request, res: import("express").Response) {
     // For GET/DELETE, look up existing session
     const sessionId = req.headers["mcp-session-id"] as string | undefined;
 
@@ -99,7 +141,7 @@ async function startHttp(): Promise<void> {
     }
 
     res.status(400).json({ error: "No active session. Send a POST to /mcp to initialize." });
-  });
+  }
 
   const httpServer = app.listen(port, () => {
     console.error(`fetch-mcp HTTP server listening on http://localhost:${port}/mcp`);
