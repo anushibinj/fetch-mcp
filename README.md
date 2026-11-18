@@ -1,10 +1,16 @@
 # fetch-mcp
 
-An MCP server that makes HTTP requests. Describe what you want in natural language — the AI translates it into the right method, headers, body, and auth parameters and executes it via Node's built-in `fetch`.
+An MCP server that makes HTTP requests and fetches page metadata. Describe what you want in natural language — the AI translates it into the right method, headers, body, and auth parameters and executes it via Node's built-in `fetch`.
+
+It provides two tools:
+
+- **`http_request`** — make any HTTP request (all common methods, headers, body, auth, timeout, redirect control)
+- **`fetch_meta`** — fetch a page with an iPhone Safari user agent, follow redirects, and return its title, description, Open Graph / Twitter tags and all other meta tags
 
 ## Requirements
 
 - Node.js 18+
+- [pnpm](https://pnpm.io) (only for local development)
 
 ## Running from npm
 
@@ -30,8 +36,8 @@ The server listens at `http://localhost:3000/mcp`.
 ### Installation
 
 ```bash
-npm install
-npm run build
+pnpm install
+pnpm build
 ```
 
 ### Usage
@@ -59,7 +65,7 @@ The server listens at `http://localhost:3000/mcp`.
 
 **Per-workspace** — create `.vscode/mcp.json` in your project:
 
-Using npm (recommended):
+Using npx (recommended):
 ```json
 {
   "servers": {
@@ -87,7 +93,7 @@ Using a local build:
 
 **Global** — add to User Settings (`Ctrl+Shift+P` → "Open User Settings JSON"):
 
-Using npm (recommended):
+Using npx (recommended):
 ```json
 "mcp": {
   "servers": {
@@ -117,7 +123,7 @@ Using a local build:
 
 Edit `%APPDATA%\Claude\claude_desktop_config.json` (macOS: `~/Library/Application Support/Claude/`):
 
-Using npm (recommended):
+Using npx (recommended):
 ```json
 {
   "mcpServers": {
@@ -197,15 +203,17 @@ Once connected to an MCP client, you can ask naturally:
 - *"Fetch https://api.example.com/data with Bearer token abc123"*
 - *"Send a DELETE request to https://api.example.com/items/42 with basic auth user:pass"*
 - *"Hit https://httpbin.org/delay/2 with a 5 second timeout"*
+- *"Get the Open Graph and Twitter card tags for https://github.com/nodejs/node"*
+- *"What's the title and description of https://example.com?"*
 
 ## Development
 
 ```bash
-npm run dev          # run with tsx (no build needed), stdio
-npm run dev:http     # run with tsx, HTTP transport
-npm run build        # compile TypeScript → dist/
-npm start            # run compiled, stdio
-npm run start:http   # run compiled, HTTP transport
+pnpm dev            # run with tsx (no build needed), stdio
+pnpm dev:http       # run with tsx, HTTP transport
+pnpm build          # compile TypeScript → dist/
+pnpm start          # run compiled, stdio
+pnpm start:http     # run compiled, HTTP transport
 ```
 
 ---
